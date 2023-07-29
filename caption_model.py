@@ -243,7 +243,7 @@ class Transformer(nn.Module):
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
 
-    def forward(self, x, x_pos_encoding, y, y_pos_encoding):
+    def forward_train(self, x, x_pos_encoding, y, y_pos_encoding):
 
         # x is the processed feature extracted
 
@@ -258,8 +258,6 @@ class Transformer(nn.Module):
         x_pos_encoding = x_pos_encoding.transpose(1,2)
 
         encoder_output = self.encoder(x, x_pos_encoding)
-
-        
         decoder_output = self.decoder(
             y,
             encoder_output,
@@ -268,6 +266,66 @@ class Transformer(nn.Module):
         )
 
         return decoder_output
+    
+    def forward_eval(self, 
+                    x:torch.tensor,
+                    x_pos_encoding: torch.tensor,
+                    linear_output_layer: nn.Linear,
+                    text_embeddings: nn.Embedding,
+                    text_pos_encoding: SinPosEncoding1D):
+        
+        device = x.device
+        batch_size = x.shape[0]
+
+        # getting output from encoder
+        x = x.transpose(1,2)
+        x_pos_encoding = x_pos_encoding.transpose(1,2)
+        encoder_output = self.encoder(x, x_pos_encoding)
+
+        # generating words from transformer
+        y_out = torch.ones(batch_size, 1, device=device) # <SOS> token vector
+        generating_output = 30 # generate output 30 times
+
+        for i in range(generating_output):
+            # positional encoding
+            cur_out = text_embeddings(y_out)
+            cur_out_pos_enc = text_pos_encoding(cur_out)
+
+            # output from decoder
+            decoder_output = linear_output_layer( # [N, cur_seq_len, vocab_dim]
+                self.decoder(
+                    cur_out, 
+                    encoder_output,
+                    cur_out_pos_enc,
+                    x_pos_encoding
+                )
+            )
+
+            _, predicted_words = decoder_output[:,-1:,:].max(dim=-1)
+            y_out = torch.cat([y_out, predicted_words],dim=1)
+
+        return y_out
+
+    def forward(self, 
+                x, 
+                x_pos_encoding, 
+                y=None, 
+                y_pos_encoding=None, 
+                output_layer=None, 
+                text_embeddings=None,
+                text_pos_encoding=None,
+                eval_mode=False):
+        
+        if eval_mode:
+            return self.forward_eval(
+                x, 
+                x_pos_encoding,
+                output_layer, 
+                text_embeddings, 
+                text_pos_encoding)
+        else:
+            return self.forward_train(x, x_pos_encoding, y, y_pos_encoding)
+
 
 class Detr(nn.Module):
     def __init__(self,
@@ -312,7 +370,18 @@ class Detr(nn.Module):
         return output
     
     def forward_eval(self, x):
-        pass
+        x, pos_x = self.joint_vector(x)
+
+        output = self.transformer(
+            x,
+            pos_x,
+            output_layer=self.output_layer,
+            text_embedding=self.text_embeddings,
+            text_pos_enc = self.sin_pos_encoding_text,
+            eval_mode=True
+        )
+
+        return output
 
     def forward(self, x, y=None, eval_mode=False):
         if eval_mode:
