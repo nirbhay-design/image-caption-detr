@@ -7,6 +7,11 @@ import warnings
 warnings.filterwarnings("ignore")
 import torchvision.transforms as transforms
 from torchtext.data import get_tokenizer
+from configs import build_args
+import sys
+import random
+from PIL import Image
+from torch.utils.data import DataLoader
 
 def progress(current,total):
     progress_percent = (current * 50 / total)
@@ -28,7 +33,7 @@ class Vocabulary():
         self.tok = tok
 
     def tokenizer(self, text):
-        return [tok.text for tok in self.tok.tokenizer(text)]
+        return [tok for tok in self.tok(text)]
 
     def build_voc(self, text_list):
         idx = 4
@@ -44,7 +49,7 @@ class Vocabulary():
                     self.itos[idx] = word
                     idx += 1
 
-    def numeric(self, text):
+    def encode(self, text):
         tokenize_text = self.tokenizer(text)
 
         numeric_val = [self.stoi['<SOS>']]
@@ -64,13 +69,15 @@ class Flickr30k_data():
                 image_path: str,
                 caption_path: str,
                 vocab_eng: Vocabulary,
-                image_transforms: transforms
+                image_transforms: transforms,
+                learned_vocab = False
                 ):
         
         self.image_path = image_path
         self.caption_path = caption_path # caption may have different text for same image
         self.vocab = vocab_eng
         self.img_transform = image_transforms
+        self.learned_vocab = learned_vocab
 
         jpg_images = list(filter(
             lambda x: '.jpg' in x,
@@ -89,7 +96,15 @@ class Flickr30k_data():
                     continue
                 img_caption_pair_dict[image_name] = [*img_caption_pair_dict.get(image_name,[]), caption]
         
-        self.data = img_caption_pair_dict.items()
+        if not self.learned_vocab:
+            vocab_construction_list = []
+            for key, value in img_caption_pair_dict.items():
+                vocab_construction_list.extend(value)
+            self.vocab.build_voc(vocab_construction_list)
+
+        img_caption_pair_dict.pop('135235570.jpg')
+
+        self.data = list(img_caption_pair_dict.items())
 
     def preprocess(self, text):
         text = text.lower()#converting string to lowercase
@@ -117,76 +132,85 @@ class Flickr30k_data():
 
     def __getitem__(self, idx):
         image_name, captions_list = self.data[idx]
+        caption_choice = random.choice(captions_list)
+
+        text_to_numeric = torch.tensor(self.vocab.encode(caption_choice))
+        image = Image.open(os.path.join(self.image_path,image_name)).convert("RGB")
+        image = self.img_transform(image)
         
-        return image_name, captions_list
+        return image, text_to_numeric
 
-# class CustomCollate():
-#     def __init__(self, pad_idx):
-#         self.pad_idx = pad_idx
+class CustomCollate():
+    def __init__(self, pad_idx):
+        self.pad_idx = pad_idx
 
-#     def __call__(self, batch):
+    def __call__(self, batch):
 
-#         text_ger = []
-#         text_eng = []
+        image = []
+        text_eng = []
 
-#         for bt in batch:
-#             text_ger.append(bt[0])
-#             text_eng.append(bt[1])
+        for bt in batch:
+            image.append(bt[0].unsqueeze(0))
+            text_eng.append(bt[1])
 
-#         padded_text_ger = torch.nn.utils.rnn.pad_sequence(text_ger, batch_first = True, padding_value = self.pad_idx)
-#         padded_text_eng = torch.nn.utils.rnn.pad_sequence(text_eng, batch_first = True, padding_value = self.pad_idx)
+        padded_text_eng = torch.nn.utils.rnn.pad_sequence(text_eng, batch_first = True, padding_value = self.pad_idx)
+        image = torch.cat(image, dim=0)
 
-#         return padded_text_ger, padded_text_eng
+        return image, padded_text_eng
 
-# def dataloaders():
-#     mt30k_train = multi30k_data(typ='train')
-#     eng_voc = mt30k_train.vocab_eng
-#     ger_voc = mt30k_train.vocab_ger
+def dataloaders(args):
 
-#     mt30k_test = multi30k_data(
-#         typ='valid',
-#         vocab_eng=eng_voc,
-#         vocab_ger=ger_voc
-#     )
+    # (256, int(256 * 1.33))
 
-#     pad_idx = 0
-
-#     train_loader = DataLoader(
-#         mt30k_train,
-#         batch_size=32,
-#         shuffle=True,
-#         pin_memory=True,
-#         num_workers=4,
-#         collate_fn = CustomCollate(pad_idx)
-#     )
-
-#     test_loader = DataLoader(
-#         mt30k_test,
-#         batch_size=32,
-#         shuffle=True,
-#         pin_memory=True,
-#         num_workers=4,
-#         collate_fn = CustomCollate(pad_idx)
-#     )
-
-#     return train_loader, test_loader, ger_voc, eng_voc
-
-if __name__ == "__main__":
     tokenizer = get_tokenizer('basic_english')
     img_transforms = transforms.Compose([
-        transforms.Resize((256, int(256 * 1.33))), # (h,w)
+        transforms.Resize(args.img_size), # (h,w)
         transforms.ToTensor()
     ])
     vocab = Vocabulary(2,tokenizer)
 
-    image_path = "/DATA/dataset/Flickr30k/Flickr30k/Images"
-    captions_path = "/DATA/dataset/Flickr30k/Flickr30k/captions.txt"
+    # image_path = "/DATA/dataset/Flickr30k/Flickr30k/Images"
+    # captions_path = "/DATA/dataset/Flickr30k/Flickr30k/captions.txt"
 
+    image_path = args.image_path
+    captions_path = args.captions_path
 
-    data = Flickr30k_data(
+    train_data = Flickr30k_data(
         image_path,
         captions_path,
         vocab,
         img_transforms
     )
+
+    out_vocab = train_data.vocab
+
+    pad_idx = 0
+
+    train_loader = DataLoader(
+        train_data,
+        batch_size=args.batch_size,
+        shuffle=True,
+        pin_memory=args.pin_memory,
+        num_workers=args.num_workers,
+        collate_fn = CustomCollate(pad_idx)
+    )
+
+    return train_loader, out_vocab
+
+
+def get_dataloader(args):
+    return dataloaders(args)
+
+if __name__ == "__main__":
+    
+
+    args = build_args(sys.argv)
+
+    train_loader, vocab = get_dataloader(args)
+    for idx, (image, text) in enumerate(train_loader):
+        print(image.shape, text.shape)
+
+        if idx == 9:
+            break
+
 
