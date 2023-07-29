@@ -19,3 +19,6 @@ vocabulary_size ==> 12081
 save_path ==> saved_models/detr_img_caption_v1.pth
 epochs ==> 100
 # of parameters: 47540465
+[1/100] loss: 1.097
+[2/100] loss: 0.279
+[3/100] loss: 0.160
