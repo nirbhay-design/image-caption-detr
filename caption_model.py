@@ -283,7 +283,7 @@ class Transformer(nn.Module):
         encoder_output = self.encoder(x, x_pos_encoding)
 
         # generating words from transformer
-        y_out = torch.ones(batch_size, 1, device=device) # <SOS> token vector
+        y_out = torch.ones(batch_size, 1, device=device).type(torch.int64) # <SOS> token vector
         generating_output = 30 # generate output 30 times
 
         for i in range(generating_output):
@@ -376,8 +376,8 @@ class Detr(nn.Module):
             x,
             pos_x,
             output_layer=self.output_layer,
-            text_embedding=self.text_embeddings,
-            text_pos_enc = self.sin_pos_encoding_text,
+            text_embeddings=self.text_embeddings,
+            text_pos_encoding = self.sin_pos_encoding_text,
             eval_mode=True
         )
 

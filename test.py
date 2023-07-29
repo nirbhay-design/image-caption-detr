@@ -35,7 +35,7 @@ if __name__ == "__main__":
 
     args = build_args_test(sys.argv)
     train_data, vocab = get_dataloader(args)
-    args.vocabulary = len(vocab)
+    args.vocabulary_size = len(vocab)
     model = load_model(args)
     device = torch.device(f'cuda:{args.gpu}')
 
