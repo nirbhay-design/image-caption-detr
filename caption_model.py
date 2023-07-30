@@ -282,9 +282,11 @@ class Transformer(nn.Module):
         x_pos_encoding = x_pos_encoding.transpose(1,2)
         encoder_output = self.encoder(x, x_pos_encoding)
 
-        # generating words from transformer
-        y_out = torch.ones(batch_size, 1, device=device).type(torch.int64) # <SOS> token vector
+        generated_words = []
         generating_output = 30 # generate output 30 times
+        # generating words from transformer
+        y_out = torch.tensor([1] + [0 for _ in range(generating_output)], device=device).unsqueeze(0).repeat(batch_size, 1)
+        # y_out = torch.ones(batch_size, 1, device=device).type(torch.int64) # <SOS> token vector
 
         for i in range(generating_output):
             # positional encoding
@@ -301,8 +303,10 @@ class Transformer(nn.Module):
                 )
             )
 
-            _, predicted_words = decoder_output[:,-1:,:].max(dim=-1)
-            y_out = torch.cat([y_out, predicted_words],dim=1)
+            _, predicted_words = decoder_output[:,i:i+1,:].max(dim=-1)
+            print(predicted_words.shape)
+            print(y_out[:,i:i+1].shape)
+            y_out[:,i:i+1] = predicted_words
 
         return y_out
 

@@ -51,7 +51,9 @@ if __name__ == "__main__":
     image = image.to(device)
     text = text.to(device)
 
-    predicted_text = model(image, eval_mode=True)
+    predicted_text = model(image, text, eval_mode=False)
+
+    _,predicted_text = predicted_text.max(dim=-1)
     print(predicted_text.shape)
 
     decode_text(vocab, text, predicted_text)
