@@ -190,14 +190,24 @@ class TransformerDecoderBlock(nn.Module):
 
     def _with_pos_enc(self, x, pos):
         return x + pos
+    
+    def get_attn_mask(self, L, S, device):
+        attn_mask = torch.triu(torch.ones((L,S), device=device))
+        # attn_mask[attn_mask == 0] = torch.tensor(float('-inf'))
+        # attn_mask[attn_mask == 1] = 0
+        
+        return attn_mask.bool()
 
-    def forward(self, query, memory, pos_query, pos_key):
+    def forward(self, query, memory, pos_query, pos_key, key_mask=None):
+        L = S = query.shape[1]
         query_pos = query + pos_query
         out_layer1 = self.layer_norm(self.dropout(
             self.masked_multihead_attention(
                 query_pos,
                 query_pos,
                 query_pos,
+                key_padding_mask = key_mask,
+                attn_mask = self.get_attn_mask(L, S, query.device)
             )[0]) + query)
 
         out_layer2 = self.encoder_replicate(out_layer1, memory, memory, pos_query, pos_key)
@@ -216,7 +226,7 @@ class TransformerDecoder(nn.Module):
         self.layer_norm = nn.LayerNorm(embed_dim)
 
 
-    def forward(self, query, memory, pos_query, pos_key):
+    def forward(self, query, memory, pos_query, pos_key, key_mask=None):
         output = query
 
         for layer in self.decoder_layers:
@@ -224,7 +234,8 @@ class TransformerDecoder(nn.Module):
                 output,
                 memory,
                 pos_query,
-                pos_key
+                pos_key,
+                key_mask=key_mask
             )
 
         return self.layer_norm(output)
@@ -243,7 +254,7 @@ class Transformer(nn.Module):
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
 
-    def forward_train(self, x, x_pos_encoding, y, y_pos_encoding):
+    def forward_train(self, x, x_pos_encoding, y, y_pos_encoding, key_mask=None):
 
         # x is the processed feature extracted
 
@@ -262,7 +273,8 @@ class Transformer(nn.Module):
             y,
             encoder_output,
             y_pos_encoding,
-            x_pos_encoding
+            x_pos_encoding,
+            key_mask=key_mask
         )
 
         return decoder_output
@@ -272,7 +284,8 @@ class Transformer(nn.Module):
                     x_pos_encoding: torch.tensor,
                     linear_output_layer: nn.Linear,
                     text_embeddings: nn.Embedding,
-                    text_pos_encoding: SinPosEncoding1D):
+                    text_pos_encoding: SinPosEncoding1D,
+                    ):
         
         device = x.device
         batch_size = x.shape[0]
@@ -282,11 +295,9 @@ class Transformer(nn.Module):
         x_pos_encoding = x_pos_encoding.transpose(1,2)
         encoder_output = self.encoder(x, x_pos_encoding)
 
-        generated_words = []
         generating_output = 30 # generate output 30 times
         # generating words from transformer
-        y_out = torch.tensor([1] + [0 for _ in range(generating_output)], device=device).unsqueeze(0).repeat(batch_size, 1)
-        # y_out = torch.ones(batch_size, 1, device=device).type(torch.int64) # <SOS> token vector
+        y_out = torch.ones(batch_size, 1, device=device).type(torch.int64) # <SOS> token vector
 
         for i in range(generating_output):
             # positional encoding
@@ -303,10 +314,8 @@ class Transformer(nn.Module):
                 )
             )
 
-            _, predicted_words = decoder_output[:,i:i+1,:].max(dim=-1)
-            print(predicted_words.shape)
-            print(y_out[:,i:i+1].shape)
-            y_out[:,i:i+1] = predicted_words
+            _, predicted_words = decoder_output[:,-1:,:].max(dim=-1)
+            y_out = torch.cat([y_out, predicted_words], dim=1)
 
         return y_out
 
@@ -318,6 +327,7 @@ class Transformer(nn.Module):
                 output_layer=None, 
                 text_embeddings=None,
                 text_pos_encoding=None,
+                key_mask = None,
                 eval_mode=False):
         
         if eval_mode:
@@ -326,9 +336,10 @@ class Transformer(nn.Module):
                 x_pos_encoding,
                 output_layer, 
                 text_embeddings, 
-                text_pos_encoding)
+                text_pos_encoding,
+            )
         else:
-            return self.forward_train(x, x_pos_encoding, y, y_pos_encoding)
+            return self.forward_train(x, x_pos_encoding, y, y_pos_encoding,key_mask=key_mask)
 
 
 class Detr(nn.Module):
@@ -355,7 +366,7 @@ class Detr(nn.Module):
         
         self.output_layer = nn.Linear(embed_dim, vocab_size)
 
-    def forward_train(self, x, y):
+    def forward_train(self, x, y, key_mask=None):
         # x -> image -> [N, 3, W, H]
         # y -> text -> [N, seqlen]
         x, pos_x = self.joint_vector(x)
@@ -366,7 +377,8 @@ class Detr(nn.Module):
             x,
             pos_x,
             y,
-            pos_y
+            pos_y,
+            key_mask = key_mask
         )
 
         output = self.output_layer(attention_text_image)
@@ -387,12 +399,12 @@ class Detr(nn.Module):
 
         return output
 
-    def forward(self, x, y=None, eval_mode=False):
+    def forward(self, x, y=None, eval_mode=False, key_mask=None):
         if eval_mode:
             return self.forward_eval(x)
         else:
             assert y is not None, "Y cannot be None while training"
-            return self.forward_train(x, y)
+            return self.forward_train(x, y, key_mask)
             
 params = lambda x: torch.tensor([y.numel() for y in x.parameters()]).sum()
     

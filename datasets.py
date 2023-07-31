@@ -210,6 +210,10 @@ if __name__ == "__main__":
     for idx, (image, text) in enumerate(train_loader):
         print(image.shape, text.shape)
 
+        print(text == 0)
+
+        break
+
         if idx == 9:
             break
 

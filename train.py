@@ -37,6 +37,28 @@ def load_model(args):
 
     return detr
 
+def get_key_masks(key_, bool_mask=False):
+    # key padding mask -> 1 where padding is there 0 otherwise
+    mask = torch.ones_like(key_, dtype=torch.float64) # [N, S]
+    target_zeros = ~(key_ == 0) # padding values to be set as 1
+    mask[target_zeros] = 0
+
+    if bool_mask:
+        return mask.bool()
+
+    mask[mask==1] = torch.tensor(float('-inf'))
+
+    return mask
+
+def input_target_split(text, eos_token):
+    tgt_text = text[:,1:]
+    _, index = torch.where(text == eos_token)
+    bs, seq_len = text.shape
+    text_val = torch.arange(seq_len).unsqueeze(0).repeat(bs, 1).to(text.device)
+    text_val = text_val[text_val[:,:] != index.reshape(-1,1)].reshape(-1, seq_len - 1)
+    inp_text = torch.gather(text, 1, text_val)
+    return inp_text, tgt_text
+
 def train(
             model,
             data,
@@ -53,11 +75,18 @@ def train(
     for epoch in range(epochs):
         cur_loss = 0
         for idx, (image, text) in enumerate(data):
+            # put data to device
             image, text = image.to(device), text.to(device)
-            out = model(image, text)
+            input_text, tgt_text = input_target_split(text, 2) # 2 is the <eos> token
+            input_mask = get_key_masks(input_text)
+
+            # forward pass
+            out = model(image, input_text, key_mask=input_mask)
             out = out.reshape(-1, out.shape[2])
-            text = text.reshape(-1)
-            loss = loss_function(out, text)
+            tgt_text = tgt_text.reshape(-1)
+
+            # loss calculation
+            loss = loss_function(out, tgt_text)
 
             cur_loss += (loss / total_len)
 
@@ -66,6 +95,7 @@ def train(
 
             optimizer.zero_grad()
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 0.01)
             optimizer.step()
 
         print(f'[{epoch+1}/{epochs}] loss: {float(cur_loss):.3f}')
