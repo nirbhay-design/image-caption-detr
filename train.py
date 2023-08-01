@@ -78,7 +78,7 @@ def train(
             # put data to device
             image, text = image.to(device), text.to(device)
             input_text, tgt_text = input_target_split(text, 2) # 2 is the <eos> token
-            input_mask = get_key_masks(input_text)
+            input_mask = get_key_masks(input_text, bool_mask=True)
 
             # forward pass
             out = model(image, input_text, key_mask=input_mask)

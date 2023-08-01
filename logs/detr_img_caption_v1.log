@@ -17,5 +17,5 @@ gpu ==> 5
 return_logs ==> False
 vocabulary_size ==> 12081
 save_path ==> saved_models/detr_img_caption_v1.pth
-epochs ==> 100
+epochs ==> 80
 # of parameters: 47540465

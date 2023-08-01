@@ -192,11 +192,11 @@ class TransformerDecoderBlock(nn.Module):
         return x + pos
     
     def get_attn_mask(self, L, S, device):
-        attn_mask = torch.triu(torch.ones((L,S), device=device))
+        attn_mask = torch.tril(torch.ones((L,S), device=device))
         # attn_mask[attn_mask == 0] = torch.tensor(float('-inf'))
         # attn_mask[attn_mask == 1] = 0
         
-        return attn_mask.bool()
+        return ~attn_mask.bool()
 
     def forward(self, query, memory, pos_query, pos_key, key_mask=None):
         L = S = query.shape[1]
