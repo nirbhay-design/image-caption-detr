@@ -62,7 +62,16 @@ class Vocabulary():
         return len(self.itos)
 
     def decode(self, numeric_val):
-        return ' '.join([self.itos[i] for i in numeric_val])
+        output_text = ""
+        for i in numeric_val:
+            if i == self.stoi['<EOS>']:
+                output_text += '<EOS>'
+                break
+            output_text += self.itos[i] + " "
+        
+        return output_text
+
+        # return ' '.join([self.itos[i] for i in numeric_val])
 
 class Flickr30k_data():
     def __init__(self, 
