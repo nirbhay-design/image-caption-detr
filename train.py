@@ -82,11 +82,16 @@ def train(
 
             # forward pass
             out = model(image, input_text, key_mask=input_mask)
-            out = out.reshape(-1, out.shape[2])
-            tgt_text = tgt_text.reshape(-1)
+            out = out.permute(0, 2, 1)
+
+            print(out.shape)
+            print(tgt_text.shape)
 
             # loss calculation
             loss = loss_function(out, tgt_text)
+            print(loss)
+            
+            exit(0)
 
             cur_loss += (loss / total_len)
 

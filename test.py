@@ -31,6 +31,19 @@ def decode_text(vocab, oText, pText):
         print(f'predicted: {vocab.decode(predicted)}')
         print("-"*40)
 
+def get_key_masks(key_, bool_mask=False):
+    # key padding mask -> 1 where padding is there 0 otherwise
+    mask = torch.ones_like(key_, dtype=torch.float64) # [N, S]
+    target_zeros = ~(key_ == 0) # padding values to be set as 1
+    mask[target_zeros] = 0
+
+    if bool_mask:
+        return mask.bool()
+
+    mask[mask==1] = torch.tensor(float('-inf'))
+
+    return mask
+
 if __name__ == "__main__":
 
     args = build_args_test(sys.argv)
