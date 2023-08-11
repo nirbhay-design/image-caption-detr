@@ -26,6 +26,8 @@ class Args():
                     updated_arg_value = eval(updated_arg_value)
                 elif isinstance(arg_value, int):
                     updated_arg_value = int(updated_arg_value)
+                elif isinstance(arg_value, float):
+                    updated_arg_value = float(updated_arg_value)
                 elif isinstance(arg_value, str):
                     updated_arg_value = str(updated_arg_value)
                 
