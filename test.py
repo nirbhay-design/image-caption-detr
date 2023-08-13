@@ -3,8 +3,16 @@ from datasets import get_dataloader
 from caption_model import Detr, params
 from configs import build_args_test
 import sys
+from torchmetrics.text import BLEUScore
 import warnings
 warnings.filterwarnings('ignore')
+
+def progress(current,total):
+    progress_percent = (current * 50 / total)
+    progress_percent_int = int(progress_percent)
+    print(f"\r|{chr(9608)* progress_percent_int}{' '*(50-progress_percent_int)}|{current}/{total}",end='')
+    if (current == total):
+        print()
 
 def load_model(args):
     detr = Detr(
@@ -26,23 +34,47 @@ def decode_text(vocab, oText, pText):
     oText = oText.detach().cpu().numpy()
     pText = pText.detach().cpu().numpy()
 
+    original_batch = []
+    predicted_batch = []
+
     for original, predicted in zip(oText, pText):
-        print(f'original: {vocab.decode(original)}')
-        print(f'predicted: {vocab.decode(predicted)}')
-        print("-"*40)
+        # print(f'original: {vocab.decode(original)}')
+        # print(f'predicted: {vocab.decode(predicted)}')
+        # print("-"*40)
+        original_batch.append(vocab.decode(original))
+        predicted_batch.append(vocab.decode(predicted))
+    
+    return original_batch, predicted_batch
 
-def get_key_masks(key_, bool_mask=False):
-    # key padding mask -> 1 where padding is there 0 otherwise
-    mask = torch.ones_like(key_, dtype=torch.float64) # [N, S]
-    target_zeros = ~(key_ == 0) # padding values to be set as 1
-    mask[target_zeros] = 0
+@torch.no_grad()
+def calculate_BLEU(model, data, device, return_logs=False):
+    model = model.to(device)
 
-    if bool_mask:
-        return mask.bool()
+    outputs = {
+        'ground-truths': [],
+        'predicted':[]
+    }
 
-    mask[mask==1] = torch.tensor(float('-inf'))
+    len_data = len(data)
 
-    return mask
+    bleu = BLEUScore(n_gram=1)
+
+    for idx, (image, text) in enumerate(data):
+        image,text = image.to(device), text.to(device)
+
+        pred_text = model(image, eval_mode=True)
+
+        original_text, predicted_text = decode_text(vocab, text, pred_text)
+        original_text = [[i] for i in original_text]
+
+        outputs['ground-truths'].extend(original_text)
+        outputs['predicted'].extend(predicted_text)
+
+        if return_logs:
+            progress(idx+1, len_data)
+    
+    return bleu(outputs['predicted'], outputs['ground-truths'])
+
 
 if __name__ == "__main__":
 
@@ -57,16 +89,20 @@ if __name__ == "__main__":
     print(model.load_state_dict(model_weights))
     model.eval()
 
-    image, text = next(iter(train_data))
-    print(image.shape)
-    print(text.shape)
+    bleu_score = calculate_BLEU(model, train_data, device, return_logs=args.return_logs)
 
-    image = image.to(device)
-    text = text.to(device)
+    print(bleu_score) # 44.73, 50.32
+    # image, text = next(iter(train_data))
+    # print(image.shape)
+    # print(text.shape)
 
-    predicted_text = model(image, eval_mode=True)
+    # image = image.to(device)
+    # text = text.to(device)
 
-    decode_text(vocab, text, predicted_text)
+    # with torch.no_grad():
+    #     predicted_text = model(image, eval_mode=True)
+
+    # decode_text(vocab, text, predicted_text)
 
 
 

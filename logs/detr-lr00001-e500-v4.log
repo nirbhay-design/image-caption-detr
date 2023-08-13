@@ -1,0 +1,33 @@
+===> Configurations
+img_size ==> [256, 340]
+image_path ==> /DATA/dataset/Flickr30k/Flickr30k/Images
+captions_path ==> /DATA/dataset/Flickr30k/Flickr30k/captions.txt
+batch_size ==> 32
+pin_memory ==> True
+num_workers ==> 4
+backbone_layers ==> ['conv1', 'bn1', 'relu', 'maxpool', 'layer1', 'layer2', 'layer3', 'layer4']
+encoder_layers ==> 6
+decoder_layers ==> 6
+encoder_heads ==> 8
+decoder_heads ==> 8
+embed_dim ==> 256
+dropout ==> 0.1
+lr ==> 0.0001
+gpu ==> 5
+return_logs ==> False
+vocabulary_size ==> 12081
+save_path ==> saved_models/detr_img_caption_lr00001_e500_v4.pth
+epochs ==> 500
+# of parameters: 47540465
+[1/500] loss: 2.420
+[2/500] loss: 1.999
+[3/500] loss: 1.890
+[4/500] loss: 1.843
+[5/500] loss: 1.791
+[6/500] loss: 1.751
+[7/500] loss: 1.734
+[8/500] loss: 1.706
+[9/500] loss: 1.686
+[10/500] loss: 1.660
+[11/500] loss: 1.636
+[12/500] loss: 1.621
