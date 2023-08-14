@@ -1,5 +1,5 @@
 import torch
-from datasets import get_dataloader
+from datasets import get_dataloader_test
 from caption_model import Detr, params
 from configs import build_args_test
 import sys
@@ -79,8 +79,11 @@ def calculate_BLEU(model, data, device, return_logs=False):
 if __name__ == "__main__":
 
     args = build_args_test(sys.argv)
-    train_data, vocab = get_dataloader(args)
+    train_data, vocab = get_dataloader_test(args)
     args.vocabulary_size = len(vocab)
+
+    args.print_args()
+
     model = load_model(args)
     device = torch.device(f'cuda:{args.gpu}')
 
@@ -91,7 +94,7 @@ if __name__ == "__main__":
 
     bleu_score = calculate_BLEU(model, train_data, device, return_logs=args.return_logs)
 
-    print(bleu_score) # 44.73, 50.32
+    print(bleu_score) # 44.73, 50.32, 49.30, 54.42
     # image, text = next(iter(train_data))
     # print(image.shape)
     # print(text.shape)
