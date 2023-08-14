@@ -1,6 +1,6 @@
 # Image captioning using Detection Transformer (DeTR)
 
-We modify the **DeTR** architecture to perform image captioning. The DeTR architecture is implemented from scratch in **Pytorch** and modified to perform image captioning task
+We modify the **[DeTR](https://github.com/facebookresearch/detr)** architecture to perform image captioning. The DeTR architecture is implemented from scratch in **Pytorch** and modified to perform image captioning task
 
 ## Installing the environment
 
