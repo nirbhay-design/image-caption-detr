@@ -1,5 +1,7 @@
 # Image captioning using Detection Transformer (DeTR)
 
+We modify the **DeTR** architecture to perform image captioning. The DeTR architecture is implemented from scratch in **Pytorch** and modified to perform image captioning task
+
 ## Installing the environment
 
 ```
@@ -51,4 +53,4 @@ python test_sample.py --vocab_path vocab/vocab.pkl --model_path saved_models/det
 
 ![img](sample_img.png)
 
-predicted: <SOS> a dog runs through the leaves <EOS>
+**predicted:** <SOS> a dog runs through the leaves <EOS>
