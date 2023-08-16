@@ -101,6 +101,6 @@ if __name__ == "__main__":
     # Flickr8k_300_lr1e-5: 54.42
 
     # Flickr30k_500_lr1e-4: 53.65
-    # Flickr30k_500_lr1e-5: 
+    # Flickr30k_500_lr1e-5: 53.34
     # Flickr8k_500_lr1e-4: 57.36
-    # Flickr8k_500_lr1e-5: 
+    # Flickr8k_500_lr1e-5: 57.69
