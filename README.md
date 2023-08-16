@@ -53,4 +53,4 @@ python test_sample.py --vocab_path vocab/vocab.pkl --model_path saved_models/det
 
 ![img](sample_img.png)
 
-**predicted:** <SOS> a dog runs through the leaves <EOS>
+**predicted:** <SOS> a man in an orange shirt hitting a tennis ball with a racket <EOS>

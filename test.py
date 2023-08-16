@@ -94,18 +94,13 @@ if __name__ == "__main__":
 
     bleu_score = calculate_BLEU(model, train_data, device, return_logs=args.return_logs)
 
-    print(bleu_score) # 44.73, 50.32, 49.30, 54.42
-    # image, text = next(iter(train_data))
-    # print(image.shape)
-    # print(text.shape)
+    print(bleu_score) 
+    # Flickr30k_300_lr1e-4: 44.73
+    # Flickr30k_300_lr1e-5: 50.32
+    # Flickr8k_300_lr1e-4: 49.30
+    # Flickr8k_300_lr1e-5: 54.42
 
-    # image = image.to(device)
-    # text = text.to(device)
-
-    # with torch.no_grad():
-    #     predicted_text = model(image, eval_mode=True)
-
-    # decode_text(vocab, text, predicted_text)
-
-
-
+    # Flickr30k_500_lr1e-4: 53.65
+    # Flickr30k_500_lr1e-5: 
+    # Flickr8k_500_lr1e-4: 57.36
+    # Flickr8k_500_lr1e-5: 
