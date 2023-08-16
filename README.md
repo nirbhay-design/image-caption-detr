@@ -49,6 +49,17 @@ python test_sample.py --vocab_path vocab/vocab.pkl --model_path <detr_model_path
 python test_sample.py --vocab_path vocab/vocab.pkl --model_path saved_models/detr_img_caption_lr00001_e300_v2.pth --gpu 6 --image_path "/DATA/dataset/Flickr8k/Images/1895768965_43cd9d164f.jpg"
 ```
 
+## Results (BLEU score)
+
+Model is always **DeTR**
+
+|(lr, Epochs)|Flickr30k|Flickr8k|
+|---|---|---|
+|(1e-4, 300)|44.73|49.30|
+|(1e-5, 300)|50.32|54.42|
+|(1e-4, 500)|53.65|57.36|
+|(1e-5, 500)|53.34|57.69|
+
 ## Captioned Samples
 
 ![img](sample_img.png)
